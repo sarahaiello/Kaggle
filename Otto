@@ -1,0 +1,78 @@
+#Code used for Otto Kaggle Challenge
+#https://www.kaggle.com/c/otto-group-product-classification-challenge
+
+# clear environment workspace
+rm(list=ls())
+
+library("Formula")
+set.seed=1
+
+
+train<-read.csv("train.csv")
+  features<-c(names(train[,2:94]))
+  features_only<-train[,2:95]
+train_order<-features_only[sample(nrow(train)),]
+  t1<-train_order[1:50000,]
+  t2<-train_order[50000:61878,]
+  var<-c("target")
+  target<-t2[,var]
+test<-read.csv("test.csv")
+
+library("nnet")
+nnet <- multinom (target ~ ., t1, decay=100)
+
+#size is number of units in hidden layer
+#nnet<-nnet(target ~ ., size=7, decay=3, t1)
+
+#raw for nnet, probs for multinom
+predict_t2 <- predict(nnet, t2, "probs")
+
+comb_t2<-cbind(predict_t2, target)
+comb_t22<-ifelse(comb_t2==0, .0000000001, comb_t2)
+rowTotals <- apply(comb_t22,1,function(x) log(x[x[10]]))
+logLoss <- sum(rowTotals)/length(rowTotals)*-1
+logLoss
+
+comb_t2$match<-ifelse(comb$predict==comb$target,1,0)
+sum(comb_t2$match)/length(comb_t2$match)
+
+
+
+library("randomForest")
+random_forest=randomForest(target ~ ., data=t1, 
+                           ntree=20, importance = TRUE)
+predict_t2 <- predict(random_forest, t2, "prob")
+comb_t2<-cbind(predict_t2, target)
+comb_t22<-ifelse(comb_t2==0, .0000000001, comb_t2)
+rowTotals <- apply(comb_t22,1,function(x) log(x[x[10]]))
+logLoss <- sum(rowTotals)/length(rowTotals)*-1
+logLoss
+
+Test
+#Look at only the features
+train1<-train[,-1]
+train2<-train1[,-94]
+
+#What does the target look like?
+table(train$target)
+
+#What are the maxes of the features?
+max<-sapply(train2, max)
+plot(max)
+
+
+#Right off the bat higher values of feature 1 seem to be associated more with class 8
+
+
+
+
+
+
+# final file
+
+test_final <- predict(random_forest, test, "prob")
+test_id<-test$id
+final<-cbind(test_id, test_final)
+write.csv(final, file="testfinal2.csv")
+
+
